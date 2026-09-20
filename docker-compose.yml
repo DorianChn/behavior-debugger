@@ -11,10 +11,17 @@ services:
     build: .
     image: behavior-debugger:0.1.0
     container_name: behavior-debugger
+    # Published to the HOST's loopback only. The API has no authentication and
+    # stores everything the user's browser did, so it must not be reachable from
+    # the network. Change to "4317:4317" only if you understand that.
     ports:
-      - "4317:4317"
+      - "127.0.0.1:4317:4317"
     environment:
       PORT: 4317
+      # Required: a process on 127.0.0.1 inside a container is on the container's
+      # loopback, which a published port cannot reach. The published port is the
+      # real boundary here, and this line is what makes it work.
+      HOST: 0.0.0.0
       BEHAVIOR_DEBUGGER_HOME: /data
       # 0.05 collapses the WAIT clock for demos. Set to 1 for real timing.
       WAIT_TIME_SCALE: "0.05"

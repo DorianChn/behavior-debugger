@@ -28,6 +28,11 @@ COPY service.ts server.ts ./
 # The event log lives on a volume, not in the image.
 ENV BEHAVIOR_DEBUGGER_HOME=/data
 ENV PORT=4317
+# A process bound to 127.0.0.1 in a container listens on the container's own
+# loopback, which a published port cannot reach. Bind all interfaces here and
+# let the port mapping be the boundary — publish it to the host's loopback
+# (`127.0.0.1:4317:4317`) since this API has no authentication.
+ENV HOST=0.0.0.0
 RUN mkdir -p /data
 VOLUME ["/data"]
 

@@ -7,8 +7,13 @@ architecture hard:
 
 1. **No build step.** The frontend is one HTML file with vanilla JS. `tsx` runs
    TypeScript directly. Nothing to configure, nothing to break.
-2. **Zero runtime dependencies.** `shared/` ships a hand-rolled validator instead of
-   pulling in a schema library. `npm install` cannot break the demo.
+2. **Nothing custom in the reasoning core.** `shared/` ships a hand-rolled validator
+   instead of pulling in a schema library. The one application dependency is `tsx`
+   (the TypeScript runner), and it touches none of the logic — `shared/`,
+   `reasoning/`, `verification/` and `database/` import only Node builtins and each
+   other. Verify rather than trust:
+   `grep -rn 'from "[^.]' shared/ reasoning/ verification/ database/ | grep -v node:`
+   returns nothing.
 3. **Every claim must be demonstrable.** If the README says "WAIT survives a restart",
    there must be a test that kills the process and proves it.
 

@@ -96,7 +96,7 @@ REJECTED      regression ≥ 20%
 
 ```bash
 npm install
-npm test              # 36 tests, unit + integration
+npm test              # 44 tests, unit + integration
 npm run demo:fast     # the whole loop, end to end, in one command
 npm start             # dashboard at http://127.0.0.1:4317
 ```
@@ -199,7 +199,7 @@ frontend and the tests reason about the same numbers.
 ## Repository layout
 
 ```
-shared/          the frozen contract — zero runtime dependencies
+shared/          the frozen contract — no third-party imports
   schemas/       event, behavior, hypothesis, task-state, intervention, verification
   utils/         window.ts (the ONLY window math), ids.ts
   types/         cross-module DTOs for the API
@@ -292,16 +292,49 @@ narrative, but `guardNarrative()` rejects causal claims ("the root cause is",
 "proves that"), and the verdict never consults it. The product runs fully with **zero
 API keys**.
 
+**About the dependency claim — precisely.** The assertion that matters is: *no
+third-party code participates in the reasoning, the arithmetic, or the storage.*
+You can verify that yourself — nothing under `shared/`, `reasoning/`,
+`verification/`, or `database/` imports anything outside this repo:
+
+```bash
+grep -rn "from \"[^.]" shared/ reasoning/ verification/ database/ | grep -v "node:"
+# → no output
+```
+
+Applications shipped in `dependencies` is exactly one: `tsx`, which executes the
+TypeScript directly so there is no build step. That was a deliberate trade — the
+TypeScript on disk is the TypeScript that runs, so you can read the code and then
+`npm start` with nothing in between.
+
+It does mean the earlier phrasing "zero runtime dependencies" was too strong, and
+`tsx` was miscategorised as a dev dependency for a while — which broke
+`npm ci --omit=dev && npm start` with `ERR_MODULE_NOT_FOUND`. `tsx` now lives in
+`dependencies` and that path is tested. The stronger, narrower claim is
+**zero third-party dependencies inside the reasoning core**, and the grep above is
+how you check it rather than take our word for it.
+
+For a real deployment you would precompile (`tsc` → `dist/` → `node dist/server.js`)
+and drop `tsx` entirely, at which point the runtime surface is Node's standard
+library alone. That is the right move for production and the wrong move for a
+hackathon, where a build step is one more thing that can fail in front of judges.
+
 ---
 
 ## Testing
 
 ```bash
-npm test          # 36 tests
+npm test          # 44 tests
 npm run test:unit # state machine purity, WAIT recovery, deadline arithmetic
 npm run demo:fast # 34 end-to-end checks through the real HTTP API
 npm run check:ui  # every field the dashboard reads exists in the payload
 ```
+
+`tests/integration/closed-loop.test.ts` drives the service layer directly, which is
+right for testing the loop but leaves anything that lives only in `server.ts`
+untested. `tests/integration/http-boundary.test.ts` fills that gap by starting the
+real server and talking to it over HTTP. That file exists because a session-routing
+bug got through the loop tests precisely because they never touched the transport.
 
 Notable cases:
 
@@ -313,6 +346,14 @@ Notable cases:
   anchored to the baseline close, never to the last event on disk.
 - **`INCONCLUSIVE` never writes memory** — only a `SUPPORTED` verdict does.
 - **Anonymous approval is rejected** — including a whitespace-only name.
+- **A batch cannot be filed under a session it does not name** — the declared
+  `sessionId` and every event's `sessionId` must agree, or the request is a 400 and
+  no session is created. `tests/integration/http-boundary.test.ts` covers the HTTP
+  boundary specifically, because the loop tests drive the service layer directly and
+  would never have caught this.
+- **Broken input is a 400, not a 500** — malformed JSON, an empty batch, and a
+  session mismatch are all caller errors, and the server distinguishes them from
+  genuine faults.
 
 ---
 
@@ -321,14 +362,38 @@ Notable cases:
 - **The collection layer is synthetic.** `collector/src/adapters/synthetic.ts`
   generates realistic browsing sessions. A real browser extension is not included;
   the ingest contract is stable and ready for one.
-- **Single-user, local-only.** No auth, no multi-tenancy. The API binds to
-  `127.0.0.1`.
+- **Single-user, no auth.** There is no authentication and no multi-tenancy.
+  Running `npm start` directly, the API binds to `127.0.0.1` and is reachable only
+  from this machine.
+- **The Docker setup needed a fix, and here is what it was.** The server originally
+  bound `127.0.0.1` unconditionally. Inside a container that means the *container's*
+  loopback, which a published port cannot reach — so `ports: "4317:4317"` mapped a
+  port nothing was listening on and the compose stack could not be connected to at
+  all. There is now a `HOST` variable (default `127.0.0.1`), the image sets
+  `HOST=0.0.0.0`, and compose publishes to the **host's loopback** —
+  `127.0.0.1:4317:4317`. The published port is the real boundary; binding inside the
+  container is not a security control. Keep that mapping on loopback unless you
+  intend to expose an unauthenticated API that stores browsing history to your
+  network. (The fix is reasoned, not tested — Docker is not installed on the machine
+  this was built on.)
+- **What a real deployment would need.** Authentication, an origin/CSRF policy, a
+  deliberate CORS decision, and PII redaction before any event reaches a remote LLM —
+  URLs and titles routinely carry internal hostnames, private repo paths, and
+  customer identifiers. None of that exists here, and its absence is why this is a
+  local tool rather than a service.
 - **The intervention executor renders checklists.** It deliberately cannot run
   commands, so there is nothing to sandbox — and nothing it can break.
 - **`INCONCLUSIVE` is common.** With fixture-sized samples the noise band is often
   wider than the effect. That is the honest outcome, not a bug.
-- **No cross-session learning yet.** Memory records what worked *for this session*;
-  applying it to the next one is the obvious next step.
+- **Memory does not yet inform the next session.** A `SUPPORTED` verdict is recorded,
+  but a new session does not retrieve it, so `LEARNED` currently means "recorded what
+  worked", not "the system got better at diagnosing". Wiring past interventions into
+  hypothesis priors — without letting them decide the answer — is the obvious next
+  step, and it fits the project's own philosophy: learn, but do not become
+  overconfident because you learned once.
+- **The JSON file store does not scale.** Every write reads and rewrites a whole
+  document. That is fine for one user and thousands of events, and wrong for ten
+  thousand sessions. `database/store.ts` is the only file that would need to change.
 
 ---
 

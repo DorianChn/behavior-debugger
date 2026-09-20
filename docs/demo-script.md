@@ -6,7 +6,7 @@ A 5-minute walkthrough. Everything here is reproducible from a clean checkout.
 
 ```bash
 npm install
-npm test                # 36 tests — establishes the groundwork claims
+npm test                # 44 tests — establishes the groundwork claims
 ```
 
 ## Option A — one command

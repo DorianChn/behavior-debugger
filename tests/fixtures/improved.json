@@ -1,0 +1,365 @@
+{
+  "name": "improved",
+  "note": "The post-intervention case: 8 switches / 30 min.",
+  "profile": {
+    "sessionId": "session_002",
+    "startedAt": "2026-09-20T11:00:00.000Z",
+    "minutes": 30,
+    "switchesPerMinute": 0.2667,
+    "sources": [
+      "github.com",
+      "stackoverflow.com",
+      "google.com",
+      "chatgpt.com"
+    ],
+    "withDwell": true,
+    "withBookends": true
+  },
+  "generatedCount": 34,
+  "span": {
+    "start": "2026-09-20T11:00:00.000Z",
+    "end": "2026-09-20T11:30:00.000Z"
+  },
+  "events": [
+    {
+      "eventId": "session_002_mu9pfq80_ev_001",
+      "timestamp": "2026-09-20T11:00:00.000Z",
+      "eventType": "task_declared",
+      "sessionId": "session_002",
+      "source": "github.com",
+      "metadata": {
+        "goal": "Ship the auth refactor",
+        "declaredBy": "user"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_002",
+      "timestamp": "2026-09-20T11:00:00.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://stackoverflow.com/",
+      "title": "Page on stackoverflow.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_003",
+      "timestamp": "2026-09-20T11:00:00.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "github.com",
+      "target": "stackoverflow.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_004",
+      "timestamp": "2026-09-20T11:01:52.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "stackoverflow.com",
+      "target": "stackoverflow.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_005",
+      "timestamp": "2026-09-20T11:02:15.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "stackoverflow.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_006",
+      "timestamp": "2026-09-20T11:03:45.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://google.com/",
+      "title": "Page on google.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_007",
+      "timestamp": "2026-09-20T11:03:45.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "stackoverflow.com",
+      "target": "google.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_008",
+      "timestamp": "2026-09-20T11:05:37.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "google.com",
+      "target": "google.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_009",
+      "timestamp": "2026-09-20T11:06:00.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "google.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_010",
+      "timestamp": "2026-09-20T11:07:30.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://chatgpt.com/",
+      "title": "Page on chatgpt.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_011",
+      "timestamp": "2026-09-20T11:07:30.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "google.com",
+      "target": "chatgpt.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_012",
+      "timestamp": "2026-09-20T11:09:22.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "chatgpt.com",
+      "target": "chatgpt.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_013",
+      "timestamp": "2026-09-20T11:09:45.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "chatgpt.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_014",
+      "timestamp": "2026-09-20T11:11:15.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://github.com/",
+      "title": "Page on github.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_015",
+      "timestamp": "2026-09-20T11:11:15.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "chatgpt.com",
+      "target": "github.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_016",
+      "timestamp": "2026-09-20T11:13:07.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "github.com",
+      "target": "github.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_017",
+      "timestamp": "2026-09-20T11:13:30.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "github.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_018",
+      "timestamp": "2026-09-20T11:15:00.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://stackoverflow.com/",
+      "title": "Page on stackoverflow.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_019",
+      "timestamp": "2026-09-20T11:15:00.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "github.com",
+      "target": "stackoverflow.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_020",
+      "timestamp": "2026-09-20T11:16:52.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "stackoverflow.com",
+      "target": "stackoverflow.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_021",
+      "timestamp": "2026-09-20T11:17:15.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "stackoverflow.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_022",
+      "timestamp": "2026-09-20T11:18:45.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://google.com/",
+      "title": "Page on google.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_023",
+      "timestamp": "2026-09-20T11:18:45.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "stackoverflow.com",
+      "target": "google.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_024",
+      "timestamp": "2026-09-20T11:20:37.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "google.com",
+      "target": "google.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_025",
+      "timestamp": "2026-09-20T11:21:00.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "google.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_026",
+      "timestamp": "2026-09-20T11:22:30.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://chatgpt.com/",
+      "title": "Page on chatgpt.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_027",
+      "timestamp": "2026-09-20T11:22:30.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "google.com",
+      "target": "chatgpt.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_028",
+      "timestamp": "2026-09-20T11:24:22.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "chatgpt.com",
+      "target": "chatgpt.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_029",
+      "timestamp": "2026-09-20T11:24:45.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "chatgpt.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_030",
+      "timestamp": "2026-09-20T11:26:15.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_002",
+      "url": "https://github.com/",
+      "title": "Page on github.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_031",
+      "timestamp": "2026-09-20T11:26:15.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_002",
+      "source": "chatgpt.com",
+      "target": "github.com",
+      "durationMs": 225000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_032",
+      "timestamp": "2026-09-20T11:28:07.500Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_002",
+      "source": "github.com",
+      "target": "github.com",
+      "durationMs": 112500,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_033",
+      "timestamp": "2026-09-20T11:28:30.000Z",
+      "eventType": "click",
+      "sessionId": "session_002",
+      "source": "github.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_002_mu9pfq80_ev_034",
+      "timestamp": "2026-09-20T11:30:00.000Z",
+      "eventType": "session_end",
+      "sessionId": "session_002",
+      "source": "chatgpt.com",
+      "schemaVersion": "1.0"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "name": "sparse",
+  "note": "Deliberately thin: 8 events / 3 min. Triggers a real WAIT.",
+  "profile": {
+    "sessionId": "session_sparse",
+    "startedAt": "2026-09-20T13:00:00.000Z",
+    "minutes": 3,
+    "switchesPerMinute": 0.6,
+    "sources": [
+      "github.com",
+      "google.com"
+    ],
+    "withDwell": true,
+    "withBookends": false
+  },
+  "generatedCount": 8,
+  "span": {
+    "start": "2026-09-20T13:00:00.000Z",
+    "end": "2026-09-20T13:02:24.000Z"
+  },
+  "events": [
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_001",
+      "timestamp": "2026-09-20T13:00:00.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_sparse",
+      "url": "https://google.com/",
+      "title": "Page on google.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_002",
+      "timestamp": "2026-09-20T13:00:00.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_sparse",
+      "source": "github.com",
+      "target": "google.com",
+      "durationMs": 90000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_003",
+      "timestamp": "2026-09-20T13:00:45.000Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_sparse",
+      "source": "google.com",
+      "target": "google.com",
+      "durationMs": 45000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_004",
+      "timestamp": "2026-09-20T13:00:54.000Z",
+      "eventType": "click",
+      "sessionId": "session_sparse",
+      "source": "google.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_005",
+      "timestamp": "2026-09-20T13:01:30.000Z",
+      "eventType": "page_visit",
+      "sessionId": "session_sparse",
+      "url": "https://github.com/",
+      "title": "Page on github.com",
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_006",
+      "timestamp": "2026-09-20T13:01:30.000Z",
+      "eventType": "page_switch",
+      "sessionId": "session_sparse",
+      "source": "google.com",
+      "target": "github.com",
+      "durationMs": 90000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_007",
+      "timestamp": "2026-09-20T13:02:15.000Z",
+      "eventType": "page_dwell",
+      "sessionId": "session_sparse",
+      "source": "github.com",
+      "target": "github.com",
+      "durationMs": 45000,
+      "schemaVersion": "1.0"
+    },
+    {
+      "eventId": "session_sparse_mu9tq1s0_ev_008",
+      "timestamp": "2026-09-20T13:02:24.000Z",
+      "eventType": "click",
+      "sessionId": "session_sparse",
+      "source": "github.com",
+      "metadata": {
+        "element": "link"
+      },
+      "schemaVersion": "1.0"
+    }
+  ]
+}

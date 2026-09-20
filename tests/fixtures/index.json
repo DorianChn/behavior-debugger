@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-09-20T13:13:47.705Z",
+  "fixtures": [
+    {
+      "name": "baseline",
+      "file": "baseline.json",
+      "events": 86,
+      "note": "The problem case: 21 switches / 30 min. Reaches READY."
+    },
+    {
+      "name": "improved",
+      "file": "improved.json",
+      "events": 34,
+      "note": "The post-intervention case: 8 switches / 30 min."
+    },
+    {
+      "name": "sparse",
+      "file": "sparse.json",
+      "events": 8,
+      "note": "Deliberately thin: 8 events / 3 min. Triggers a real WAIT."
+    }
+  ]
+}

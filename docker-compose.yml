@@ -1,0 +1,27 @@
+# Behavior Debugger — local stack.
+#
+#   docker compose up --build
+#   → dashboard on http://127.0.0.1:4317
+#
+# The data volume matters: the event log must outlive the container, or the
+# "WAIT survives a restart" guarantee has nothing to prove.
+
+services:
+  behavior-debugger:
+    build: .
+    image: behavior-debugger:0.1.0
+    container_name: behavior-debugger
+    ports:
+      - "4317:4317"
+    environment:
+      PORT: 4317
+      BEHAVIOR_DEBUGGER_HOME: /data
+      # 0.05 collapses the WAIT clock for demos. Set to 1 for real timing.
+      WAIT_TIME_SCALE: "0.05"
+    volumes:
+      - behavior-debugger-data:/data
+    restart: unless-stopped
+
+volumes:
+  behavior-debugger-data:
+    driver: local

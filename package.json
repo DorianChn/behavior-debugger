@@ -1,0 +1,28 @@
+{
+  "name": "behavior-debugger",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Behavior Debugger — Deferred Intelligence for behavioral debugging: observe, wait for sufficient evidence, diagnose competing hypotheses, intervene, then verify with observed data.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --import tsx server.ts",
+    "dev": "node --import tsx server.ts",
+    "demo": "node --import tsx scripts/demo.ts",
+    "demo:fast": "node --import tsx scripts/run-demo.ts",
+    "check:ui": "node --import tsx scripts/check-ui-contract.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/unit/*.test.ts tests/integration/*.test.ts",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:integration": "node --import tsx --test tests/integration/*.test.ts",
+    "fixtures:generate": "node --import tsx scripts/generate-fixtures.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

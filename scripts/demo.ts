@@ -11,7 +11,10 @@
 const BASE = process.argv[2] ?? "http://127.0.0.1:8017";
 const J = { "content-type": "application/json" };
 
+/* Counted, not eyeballed. The README quotes a number here, and a quoted
+   number that nobody computes is a claim that drifts silently. */
 let failures = 0;
+let checks = 0;
 
 /* The subset of the API payloads this script reads. Declared so the demo is
    type-checked against the real contract rather than trusting `any`. */
@@ -107,6 +110,7 @@ function say(...parts: unknown[]) {
 }
 function check(label: string, ok: boolean, detail = "") {
   console.log(`  ${ok ? "✓" : "✗"} ${label}${detail ? ` — ${detail}` : ""}`);
+  checks++;
   if (!ok) failures++;
 }
 
@@ -354,9 +358,9 @@ async function main() {
   /* ------------------------------------------------------------------ */
   console.log(`\n${"═".repeat(74)}`);
   if (failures === 0) {
-    console.log("  ALL CHECKS PASSED — the loop is closed and honest at every step.");
+    console.log(`  ALL ${checks} CHECKS PASSED — the loop is closed and honest at every step.`);
   } else {
-    console.log(`  ${failures} CHECK(S) FAILED — see ✗ above.`);
+    console.log(`  ${failures} OF ${checks} CHECK(S) FAILED — see ✗ above.`);
   }
   console.log(`${"═".repeat(74)}\n`);
   process.exit(failures === 0 ? 0 : 1);

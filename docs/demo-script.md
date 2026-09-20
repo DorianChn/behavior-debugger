@@ -16,7 +16,7 @@ npm run demo:fast
 ```
 
 Boots the API on a scratch data root, drives the full loop, and prints a pass/fail per
-claim. Expect **37 checks, 0 failures**, ending with:
+claim. Expect **34 checks, 0 failures**, ending with:
 
 ```
   result  SUPPORTED
@@ -25,7 +25,7 @@ claim. Expect **37 checks, 0 failures**, ending with:
   ✓ only a SUPPORTED verdict writes memory — 1 record(s)
      lesson: Aggregate Frequently Used Documentation reduced switchRatePerMin by 61.9%
 
-  ALL CHECKS PASSED — the loop is closed and honest at every step.
+  ALL 34 CHECKS PASSED — the loop is closed and honest at every step.
 ```
 
 ## Option B — drive the dashboard

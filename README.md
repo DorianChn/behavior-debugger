@@ -299,7 +299,7 @@ API keys**.
 ```bash
 npm test          # 36 tests
 npm run test:unit # state machine purity, WAIT recovery, deadline arithmetic
-npm run demo:fast # 37 end-to-end checks through the real HTTP API
+npm run demo:fast # 34 end-to-end checks through the real HTTP API
 npm run check:ui  # every field the dashboard reads exists in the payload
 ```
 

@@ -1,0 +1,20 @@
+# Normalize line endings. Without this, Git on Windows rewrites every file to
+# CRLF on checkout, which produces enormous spurious diffs and can break the
+# shebang-free TypeScript tooling.
+* text=auto eol=lf
+
+# Explicitly binary — never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Fixtures are generated, but they are plain JSON and should diff cleanly
+# so a fixture change is reviewable.
+tests/fixtures/*.json text eol=lf
+
+# Keep lockfiles exact.
+package-lock.json text eol=lf -diff

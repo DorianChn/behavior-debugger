@@ -1,0 +1,26 @@
+# Build output / dependencies
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Runtime data. The event log and task state are per-machine artifacts,
+# not part of the source. Point BEHAVIOR_DEBUGGER_HOME here (the default).
+.data/
+.demo-data/
+*.jsonl.bak
+
+# Environment
+.env
+.env.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+*.log
+npm-debug.log*

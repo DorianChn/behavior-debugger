@@ -24,7 +24,7 @@ const { buildSession, SPARSE_PROFILE, BASELINE_PROFILE } = await import(
   "../../collector/src/adapters/synthetic.js"
 );
 
-bootstrap({ ingest, store });
+bootstrap();
 
 let n = 0;
 const sid = (t: string) => `${t}_${++n}`;

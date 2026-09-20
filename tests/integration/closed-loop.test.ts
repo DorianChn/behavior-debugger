@@ -30,7 +30,7 @@ const { executeIntervention, ApprovalRequiredError } = await import("../../inter
 const { assertMultiHypothesis } = await import("../../shared/schemas/hypothesis.js");
 const { validateTaskState } = await import("../../shared/schemas/validate.js");
 
-bootstrap({ ingest, store });
+bootstrap();
 
 /** Assert-and-narrow helpers so the test body reads as intent, not null checks. */
 function need<T>(v: T | null | undefined, what: string): T {

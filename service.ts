@@ -23,12 +23,14 @@ import {
   loadVerification,
   readEventsForSession,
   readMemory,
+  readTimeline,
   saveExperiment,
   saveIntervention,
   saveTask,
   saveVerification,
   listSessions,
 } from "./database/store.js";
+import { ingest } from "./collector/src/ingest.js";
 import { evaluateSession, ensureState, onNewEvents } from "./reasoning/engine.js";
 import { applyEvent, WaitScheduler, bootstrapScheduler } from "./reasoning/state-machine-port.js";
 import { planIntervention, rankInterventions } from "./intervention/planner.js";
@@ -80,28 +82,25 @@ export function createTask(sessionId: string, goal: string, successCriteria?: st
 /**
  * Ingest a batch and react appropriately. Returns the evaluation outcome so the
  * HTTP layer can echo the phase straight back to the extension.
+ *
+ * `sessionId` is a required parameter, not something inferred from
+ * `events[0].sessionId`. Inferring it meant the declared session could disagree
+ * with the events' session and the mismatch would go unnoticed — the request
+ * would say one thing and the data would be filed under another. Callers now
+ * state the session, and `ingest()` rejects any event that disagrees.
  */
-export function ingestAndEvaluate(events: RawEvent[], opts: { batchId?: string } = {}) {
-  const sessionId = events[0]?.sessionId;
-  if (!sessionId) throw new Error("ingestAndEvaluate requires at least one event with a sessionId");
+export function ingestAndEvaluate(
+  sessionId: string,
+  events: RawEvent[],
+  opts: { batchId?: string } = {},
+) {
+  if (!sessionId) throw new Error("ingestAndEvaluate requires a sessionId");
+  if (events.length === 0) throw new Error("ingestAndEvaluate requires at least one event");
 
-  // Imported lazily to keep the dependency direction obvious in the source.
-  const { ingest } = require0();
   const result = ingest({ sessionId, events, batchId: opts.batchId });
   const outcome = onNewEvents(sessionId, result.accepted);
   if (outcome.waiting) getScheduler().arm(outcome.state);
   return { ingest: result, outcome };
-}
-
-// Small indirection so `collector` stays a peer module rather than a hard
-// import at the top of this file (keeps the dependency graph readable).
-function require0(): { ingest: (b: { sessionId: string; events: RawEvent[]; batchId?: string }) => import("./shared/types/api.js").IngestResult } {
-  return { ingest: ingestShim };
-}
-
-let ingestShim: (b: { sessionId: string; events: RawEvent[]; batchId?: string }) => import("./shared/types/api.js").IngestResult;
-export function __setIngest(fn: typeof ingestShim): void {
-  ingestShim = fn;
 }
 
 /** Assemble everything the dashboard needs for one session. */
@@ -308,33 +307,12 @@ export async function runVerification(sessionId: string, opts: { comparisonMinut
 }
 
 export function sessionTimeline(sessionId: string): TimelineEntry[] {
-  return loadTaskState(sessionId) ? require2(sessionId) : [];
-}
-
-function require2(sessionId: string): TimelineEntry[] {
-  // Kept as a named helper so the import list at the top stays honest.
-  const { readTimeline } = requireTimeline();
-  return readTimeline(sessionId);
-}
-
-function requireTimeline(): typeof import("./database/store.js") {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return timelineStore;
-}
-
-let timelineStore: typeof import("./database/store.js");
-export function __setTimelineStore(s: typeof import("./database/store.js")): void {
-  timelineStore = s;
+  return loadTaskState(sessionId) ? readTimeline(sessionId) : [];
 }
 
 export { listSessions, readMemory };
 
-/** Wire the two lazy seams. Called once by the server entry point. */
-export function bootstrap(deps: {
-  ingest: typeof ingestShim;
-  store: typeof import("./database/store.js");
-}): void {
-  __setIngest(deps.ingest);
-  __setTimelineStore(deps.store);
+/** Start the scheduler. Call once at process start. */
+export function bootstrap(): void {
   getScheduler();
 }

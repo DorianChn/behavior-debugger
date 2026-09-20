@@ -34,7 +34,7 @@ import {
 import { forceExpireWaits } from "./reasoning/state-machine-port.js";
 import { buildSession, BASELINE_PROFILE, IMPROVED_PROFILE, SPARSE_PROFILE, type SessionProfile } from "./collector/src/adapters/synthetic.js";
 
-bootstrap({ ingest, store });
+bootstrap();
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FRONTEND = path.join(HERE, "frontend");
@@ -148,7 +148,30 @@ const server = http.createServer(async (req, res) => {
       if (!body.sessionId || !Array.isArray(body.events)) {
         return fail(res, 400, "expected { sessionId, events: RawEvent[] }");
       }
-      const result = ingestAndEvaluate(body.events, { batchId: body.batchId });
+      /* An empty batch is a caller bug, not a no-op. `ingestAndEvaluate`
+         derives the session from `events[0].sessionId`, so an empty array
+         reaches it with no session at all and throws — surfacing as a 500 for
+         what is plainly a malformed request. Reject it here instead. */
+      if (body.events.length === 0) {
+        return fail(res, 400, "events must not be empty — a batch needs at least one event");
+      }
+
+      /* The declared sessionId and the events' sessionId must agree.
+         `ingestAndEvaluate` derives the session from `events[0].sessionId`, so
+         without this check a request could declare session A, carry session B,
+         and be filed under B with a 200 — the caller would never know. The
+         mismatch is a caller bug, and it is cheapest to catch it here. */
+      const mismatched = body.events.find((e) => e?.sessionId !== body.sessionId);
+      if (mismatched) {
+        return fail(
+          res,
+          400,
+          `event ${mismatched.eventId ?? "<no eventId>"} has sessionId "${mismatched.sessionId}" ` +
+            `but the request declares "${body.sessionId}" — every event in a batch must belong to the declared session`,
+        );
+      }
+
+      const result = ingestAndEvaluate(body.sessionId, body.events, { batchId: body.batchId });
       if (result.outcome.waiting) getScheduler().arm(result.outcome.state);
       return ok(res, { ingest: result.ingest, phase: result.outcome.state.phase, headline: result.outcome.headline });
     }
@@ -166,7 +189,9 @@ const server = http.createServer(async (req, res) => {
       if (!profile) return fail(res, 400, `unknown profile "${key}" (baseline | improved | sparse)`);
       const withId: SessionProfile = body.sessionId ? { ...profile, sessionId: body.sessionId } : profile;
       const events = buildSession(withId);
-      const result = ingestAndEvaluate(events, { batchId: `demo_${key}_${withId.sessionId}_${Date.now()}` });
+      const result = ingestAndEvaluate(withId.sessionId, events, {
+        batchId: `demo_${key}_${withId.sessionId}_${Date.now()}`,
+      });
       if (result.outcome.waiting) getScheduler().arm(result.outcome.state);
       return ok(res, {
         sessionId: withId.sessionId,
@@ -309,14 +334,38 @@ const server = http.createServer(async (req, res) => {
     return fail(res, 404, `no route for ${req.method} ${p}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[api] ${req.method} ${p} → ${message}`);
-    return fail(res, 500, message);
+    /* Distinguish "your request was wrong" from "we broke".
+       Without this, every malformed payload surfaced as a 500 — which trains
+       callers to ignore 500s, and hides genuine server faults in the noise.
+       These are the messages `readBody` and the validators actually throw. */
+    const clientError =
+      /request body (is not valid JSON|too large)|is required|must be|invalid |not allowed by the .* schema|expected /i.test(
+        message,
+      );
+    const status = clientError ? 400 : 500;
+    console.error(`[api] ${req.method} ${p} → ${status} ${message}`);
+    return fail(res, status, message);
   }
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`behavior-debugger API  →  http://127.0.0.1:${PORT}`);
-  console.log(`  dashboard            →  http://127.0.0.1:${PORT}/`);
+/* Bind address.
+ *
+ * Defaults to loopback so a local run is never exposed on the network — the API
+ * has no authentication, and it stores everything the user's browser did.
+ *
+ * Containers must override this. A process listening on 127.0.0.1 inside a
+ * container is on that container's loopback only, so `ports: "4317:4317"` maps
+ * a port nothing is listening on. `HOST=0.0.0.0` is correct inside a container
+ * *because* the published port is the actual boundary — but only publish it to
+ * the host's loopback (`127.0.0.1:4317:4317`) unless you intend to expose an
+ * unauthenticated API to your network. */
+const HOST = process.env.HOST ?? "127.0.0.1";
+
+server.listen(PORT, HOST, () => {
+  const shown = HOST === "0.0.0.0" ? "127.0.0.1" : HOST;
+  console.log(`behavior-debugger API  →  http://${shown}:${PORT}`);
+  console.log(`  dashboard            →  http://${shown}:${PORT}/`);
+  console.log(`  bound to             →  ${HOST}:${PORT}${HOST === "0.0.0.0" ? "  (all interfaces — no auth!)" : ""}`);
   console.log(`  data root            →  ${store.DB_ROOT}`);
   console.log(`  WAIT time scale      →  ×${getScheduler().timeScale} (set WAIT_TIME_SCALE=0.05 to demo fast)`);
 });

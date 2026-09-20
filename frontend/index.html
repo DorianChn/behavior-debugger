@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Behavior Debugger — Deferred Intelligence</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #121724;
+    --panel-2: #171d2e;
+    --line: #232b40;
+    --text: #e6e9f2;
+    --dim: #8b93a7;
+    --dimmer: #5c6478;
+    --accent: #6ea8fe;
+    --wait: #f0b429;
+    --ok: #3ddc97;
+    --bad: #ff6b81;
+    --warn: #ffa94d;
+    --violet: #b197fc;
+    --teal: #38d9a9;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  code, .mono { font-family: var(--mono); font-size: 0.92em; }
+
+  /* ------------------------------- layout ------------------------------- */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 20px;
+    background: rgba(11,14,20,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+  header h1 span { color: var(--dim); font-weight: 400; }
+  .grow { flex: 1 1 auto; }
+  main { padding: 18px 20px 80px; max-width: 1560px; margin: 0 auto; }
+
+  .grid { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 16px; align-items: start; }
+  @media (max-width: 1080px) { .grid { grid-template-columns: minmax(0,1fr); } }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card > h2 {
+    margin: 0; padding: 11px 15px;
+    font-size: 12px; font-weight: 650;
+    letter-spacing: .9px; text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--line);
+    background: var(--panel-2);
+    display: flex; align-items: center; gap: 9px;
+  }
+  .card > h2 .tag { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--dimmer); font-size: 11px; }
+  .body { padding: 15px; }
+
+  /* ------------------------------ controls ------------------------------ */
+  button {
+    font: inherit; font-size: 13px;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 13px; cursor: pointer;
+    transition: border-color .12s, background .12s, opacity .12s;
+    white-space: nowrap;
+  }
+  button:hover:not(:disabled) { border-color: #38426033; background: #1d2438; border-color: #384260; }
+  button:disabled { opacity: .38; cursor: not-allowed; }
+  button.primary { background: #1d3a6e; border-color: #2f5da8; color: #d6e4ff; }
+  button.primary:hover:not(:disabled) { background: #24478a; }
+  button.danger { background: #3d1f28; border-color: #6e2f3f; color: #ffd6dd; }
+  button.ghost { background: transparent; }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  select, input[type=text] {
+    font: inherit; font-size: 13px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px;
+  }
+  input[type=text] { min-width: 190px; }
+  label.field { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--dim); }
+  .hint { font-size: 11.5px; color: var(--dimmer); }
+  .err { color: var(--bad); font-size: 12.5px; }
+
+  /* ------------------------------ phase bar ----------------------------- */
+  .phases { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 3px; }
+  .phase {
+    flex: 1 0 auto; min-width: 68px;
+    text-align: center; padding: 6px 7px;
+    border-radius: 7px; border: 1px solid var(--line);
+    background: var(--panel-2);
+    font-size: 10px; letter-spacing: .3px;
+    color: var(--dimmer);
+    transition: all .18s;
+  }
+  .phase .zh { display: block; font-size: 9px; opacity: .72; margin-top: 1px; }
+  .phase.done { color: var(--dim); border-color: #2c3550; }
+  .phase.active {
+    background: #1d3a6e; border-color: var(--accent); color: #dceaff;
+    box-shadow: 0 0 0 1px #6ea8fe44, 0 0 16px #6ea8fe26;
+  }
+  .phase.active.waiting { background: #4a3608; border-color: var(--wait); color: #ffe8b8; box-shadow: 0 0 0 1px #f0b42955, 0 0 18px #f0b42930; }
+
+  /* --------------------------- WAIT countdown --------------------------- */
+  .waitbox {
+    margin-top: 14px; padding: 13px 15px;
+    border: 1px solid #6a4f10; border-radius: 10px;
+    background: linear-gradient(180deg, #241b06, #1a1405);
+  }
+  .waitbox.idle { border-color: var(--line); background: var(--panel-2); }
+  .waithead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .waithead b { color: var(--wait); font-size: 12px; letter-spacing: .7px; }
+  .count { font-family: var(--mono); font-size: 27px; color: #ffd772; letter-spacing: 1px; }
+  .count.small { font-size: 17px; }
+  .waitlabel { font-size: 11px; color: var(--dimmer); }
+  .bar { height: 4px; border-radius: 3px; background: #2a2208; margin-top: 10px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, #f0b429, #ffd772); transition: width .4s linear; }
+  .missing { margin: 9px 0 0; padding-left: 17px; font-size: 12px; color: #e8c877; }
+  .missing li { margin: 2px 0; }
+
+  /* ------------------------------- metrics ------------------------------ */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 9px; }
+  .metric { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; }
+  .metric .k { font-size: 10px; color: var(--dim); letter-spacing: .35px; text-transform: uppercase; }
+  .metric .v { font-family: var(--mono); font-size: 19px; margin-top: 3px; }
+  .metric .u { font-size: 11px; color: var(--dimmer); margin-left: 2px; }
+
+  /* ------------------------------ segments ------------------------------ */
+  .segbar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+  .seg { position: relative; min-width: 2px; transition: filter .12s; cursor: default; }
+  .seg:hover { filter: brightness(1.35); }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 9px; font-size: 11px; color: var(--dim); }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .seq { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); word-break: break-word; line-height: 1.85; }
+  .chip {
+    display: inline-block; padding: 1px 6px; border-radius: 5px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    margin: 1px 2px 1px 0; font-size: 10.5px; color: var(--text);
+  }
+
+  /* ----------------------------- hypotheses ----------------------------- */
+  .hyp { border: 1px solid var(--line); border-radius: 10px; padding: 12px 13px; background: var(--panel-2); }
+  .hyp + .hyp { margin-top: 10px; }
+  .hyp.lead { border-color: #3b5a96; background: #141d31; }
+  .hyphead { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .hyphead .name { font-weight: 620; font-size: 13.5px; }
+  .hyphead .conf { margin-left: auto; font-family: var(--mono); font-size: 13px; }
+  .badge {
+    font-size: 9.5px; letter-spacing: .5px; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 5px;
+    background: #1d3a6e; border: 1px solid #2f5da8; color: #cfe0ff;
+  }
+  .badge.lead { background: #14452f; border-color: #2f7d5a; color: #c6f3de; }
+  .badge.warn { background: #4a3608; border-color: #6a4f10; color: #ffe0a3; }
+  .cbar { height: 3px; border-radius: 2px; background: #232b40; margin: 9px 0 11px; overflow: hidden; }
+  .cbar > i { display: block; height: 100%; background: var(--accent); }
+  .evgroup { margin-top: 8px; }
+  .evgroup .t { font-size: 10px; letter-spacing: .55px; text-transform: uppercase; margin-bottom: 4px; }
+  .evgroup .t.sup { color: var(--ok); }
+  .evgroup .t.con { color: var(--bad); }
+  .evgroup .t.miss { color: var(--wait); }
+  .ev { display: flex; gap: 8px; font-size: 12px; padding: 3px 0; align-items: baseline; }
+  .ev .m { font-family: var(--mono); font-size: 11px; color: var(--dim); white-space: nowrap; }
+  .ev a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted #6ea8fe66; font-family: var(--mono); font-size: 10.5px; }
+  .ev a:hover { border-bottom-style: solid; }
+  .dim { color: var(--dim); }
+  .dimmer { color: var(--dimmer); }
+
+  /* ------------------------------ timeline ------------------------------ */
+  .tl { display: flex; flex-direction: column; gap: 0; }
+  .tlrow { display: grid; grid-template-columns: 62px 15px minmax(0,1fr); gap: 10px; }
+  .tlrow .t { font-family: var(--mono); font-size: 10.5px; color: var(--dimmer); padding-top: 2px; }
+  .tlrow .rail { position: relative; display: flex; justify-content: center; }
+  .tlrow .rail::before { content: ""; position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+  .tlrow:first-child .rail::before { top: 6px; }
+  .tlrow:last-child .rail::before { bottom: auto; height: 6px; }
+  .tlrow .dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--dim); margin-top: 4px; box-shadow: 0 0 0 2px var(--bg); z-index: 1; }
+  .tlrow.sel .dot { background: var(--accent); }
+  .tlrow .txt { padding-bottom: 11px; min-width: 0; }
+  .tlrow .ph { font-size: 12px; }
+  .tlrow .dt { font-size: 11.5px; color: var(--dim); word-break: break-word; }
+
+  /* ------------------------------- table -------------------------------- */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl th { text-align: left; font-size: 10px; letter-spacing: .5px; text-transform: uppercase; color: var(--dim); font-weight: 600; padding: 0 8px 7px 0; border-bottom: 1px solid var(--line); }
+  .tbl td { padding: 7px 8px 7px 0; border-bottom: 1px solid #1a2033; vertical-align: top; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl td.num { font-family: var(--mono); text-align: right; }
+
+  /* ----------------------------- verification --------------------------- */
+  .verdict { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); }
+  .verdict .r { font-size: 15px; font-weight: 680; letter-spacing: .4px; }
+  .verdict.SUPPORTED { border-color: #2f7d5a; background: #10261c; }
+  .verdict.SUPPORTED .r { color: var(--ok); }
+  .verdict.REJECTED { border-color: #7d2f3f; background: #261014; }
+  .verdict.REJECTED .r { color: var(--bad); }
+  .verdict.WEAKENED { border-color: #6a4f10; background: #241b06; }
+  .verdict.WEAKENED .r { color: var(--warn); }
+  .verdict.INCONCLUSIVE { border-color: #4a4266; background: #1c1930; }
+  .verdict.INCONCLUSIVE .r { color: var(--violet); }
+  .compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin-top: 13px; }
+  .cnumbox { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; text-align: center; }
+  .cnumbox .l { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); }
+  .cnumbox .n { font-family: var(--mono); font-size: 25px; margin-top: 2px; }
+  .cnumbox .s { font-size: 10.5px; color: var(--dimmer); }
+  .arrow { font-size: 20px; color: var(--dim); }
+  .delta { text-align: center; font-family: var(--mono); font-size: 19px; margin-top: 11px; }
+  .delta.good { color: var(--ok); }
+  .delta.bad { color: var(--bad); }
+  .delta.flat { color: var(--dim); }
+
+  /* -------------------------------- misc -------------------------------- */
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 5px 13px; font-size: 12px; }
+  .kv .k { color: var(--dim); white-space: nowrap; }
+  .empty { color: var(--dimmer); font-size: 12.5px; padding: 9px 0; }
+  pre { margin: 0; font-family: var(--mono); font-size: 11px; color: var(--dim); white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow: auto; }
+  details summary { cursor: pointer; font-size: 11.5px; color: var(--dim); user-select: none; }
+  details summary:hover { color: var(--text); }
+  details[open] summary { margin-bottom: 8px; }
+  .ladder { display: flex; flex-direction: column; gap: 5px; }
+  .ladder .rung { display: flex; align-items: center; gap: 9px; font-size: 11.5px; }
+  .ladder .pct { font-family: var(--mono); width: 42px; text-align: right; color: var(--dim); }
+  .ladder .track { flex: 1; height: 5px; border-radius: 3px; background: #1a2033; overflow: hidden; }
+  .ladder .track > i { display: block; height: 100%; }
+  .ladder .lb { width: 132px; color: var(--dim); font-size: 11px; }
+  .toast {
+    position: fixed; right: 18px; bottom: 18px; z-index: 50;
+    max-width: 440px; padding: 11px 14px; border-radius: 9px;
+    background: var(--panel); border: 1px solid var(--line);
+    box-shadow: 0 8px 30px #0009; font-size: 12.5px;
+    opacity: 0; transform: translateY(8px); pointer-events: none;
+    transition: opacity .18s, transform .18s;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err { border-color: #7d2f3f; color: #ffc9d2; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Behavior Debugger <span>· Deferred Intelligence</span></h1>
+  <div class="grow"></div>
+  <select id="profile" title="Demo fixture">
+    <option value="baseline">baseline · 21 switches / 30min</option>
+    <option value="improved">improved · 8 switches / 30min</option>
+    <option value="sparse">sparse · 3min (triggers WAIT)</option>
+  </select>
+  <button id="btnLoad">载入会话 Load</button>
+  <button id="btnFast" class="ghost" title="Expire WAIT timers now">快进 Fast-forward</button>
+  <select id="sessions" title="Tracked sessions" style="min-width:150px"></select>
+  <button id="btnRefresh" class="ghost">刷新</button>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- ============================ LEFT ============================ -->
+    <div class="col">
+
+      <div class="card">
+        <h2>状态机 · State Machine <span class="tag" id="sessionTag">—</span></h2>
+        <div class="body">
+          <div class="phases" id="phases"></div>
+
+          <div class="waitbox idle" id="waitbox">
+            <div class="waithead">
+              <b id="waitTitle">NO ACTIVE WAIT</b>
+              <span class="count" id="waitCount">—</span>
+              <span class="grow"></span>
+              <span class="waitlabel" id="waitUntilLabel"></span>
+            </div>
+            <div class="bar"><i id="waitBar" style="width:0%"></i></div>
+            <ul class="missing" id="missingList"></ul>
+            <div class="hint" id="waitNote" style="margin-top:8px">
+              WAIT 是一个被持久化的状态，不是一个句子。杀掉进程再启动，系统仍会找到它。
+            </div>
+          </div>
+
+          <div id="headline" class="hint" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>行为表征 · Behavior Representation <span class="tag" id="winTag"></span></h2>
+        <div class="body">
+          <div class="metrics" id="metrics"></div>
+          <div id="segwrap" style="margin-top:15px">
+            <div class="hint" style="margin-bottom:7px">Segment map（每个色块 = 一段行为，可追溯到 eventId）</div>
+            <div class="segbar" id="segbar"></div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <details style="margin-top:13px">
+            <summary>压缩后的行为序列 · compressed sequence</summary>
+            <div class="seq" id="seq"></div>
+          </details>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>时间线 · Timeline</h2>
+        <div class="body">
+          <div class="tl" id="timeline"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================ RIGHT ============================ -->
+    <div class="col">
+
+      <div class="card">
+        <h2>证据充分性 · Sufficiency <span class="tag" id="suffTag"></span></h2>
+        <div class="body">
+          <div class="ladder" id="ladder"></div>
+          <div id="suffReason" class="hint" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>竞争假设 · Competing Hypotheses <span class="tag" id="hypTag"></span></h2>
+        <div class="body" id="hyps"></div>
+      </div>
+
+      <div class="card">
+        <h2>干预 · Intervention</h2>
+        <div class="body">
+          <div id="interv"></div>
+          <div class="btnrow" style="margin-top:13px">
+            <button id="btnPropose" class="primary">生成干预 Propose</button>
+          </div>
+          <div id="approveRow" style="margin-top:13px; display:none">
+            <div class="hint" style="margin-bottom:7px">
+              干预必须由具名人类批准 —— 匿名批准会被拒绝。
+            </div>
+            <div class="btnrow">
+              <input type="text" id="acker" placeholder="your name (required)" />
+              <button id="btnApprove" class="primary">批准 Approve</button>
+              <button id="btnReject" class="danger">拒绝 Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>验证 · Verification</h2>
+        <div class="body">
+          <div id="verify"></div>
+          <div class="btnrow" style="margin-top:13px">
+            <button id="btnVerify" class="primary">运行验证 Verify</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>记忆 · Memory</h2>
+        <div class="body" id="memory"></div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   Behavior Debugger dashboard
+   Vanilla JS, no build step — it consumes only the public /api surface.
+   ========================================================================= */
+
+const PHASES = ["OBSERVING","INSUFFICIENT","WAITING","RE_EVALUATING","READY",
+                "DIAGNOSING","INTERVENING","VERIFYING","LEARNED"];
+const PHASE_ZH = {
+  OBSERVING:"观测", INSUFFICIENT:"证据不足", WAITING:"等待", RE_EVALUATING:"重评",
+  READY:"就绪", DIAGNOSING:"诊断", INTERVENING:"干预", VERIFYING:"验证", LEARNED:"已学习"
+};
+const KIND_COLORS = {
+  development:"#4c8bf5", docs_search:"#f0b429", ai_assistance:"#b197fc",
+  context_switch:"#ff6b81", idle:"#3d4459", communication:"#38d9a9", unknown:"#2b3245"
+};
+const KIND_ZH = {
+  development:"开发", docs_search:"查文档", ai_assistance:"问 AI",
+  context_switch:"切换", idle:"空闲", communication:"沟通", unknown:"未知"
+};
+const METRIC_LABELS = {
+  switchCount:["切换次数","switches"], switchRatePerMin:["切换率","/min"],
+  uniqueSources:["来源数","sources"], avgDwellMs:["平均停留","ms"],
+  returnRate:["回访率","ratio"], longestFocusMs:["最长专注","ms"],
+  totalDwellMs:["总时长","ms"]
+};
+/* The five weighted gates in reasoning/sufficiency.ts. */
+const CHECK_LABELS = {
+  minEvents:"事件数量", minObservationMinutes:"观测时长", minDistinctKinds:"行为多样性",
+  minStableSubwindows:"模式稳定性", baseline:"基线信号"
+};
+
+let state = {
+  sessionId: null,
+  snapshot: null,
+  memory: [],
+  tick: null
+};
+
+/* --------------------------------- utils -------------------------------- */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+function toast(msg, isErr) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.className = "toast show" + (isErr ? " err" : "");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = "toast"; }, 4200);
+}
+
+function fmtMs(ms) {
+  if (!Number.isFinite(ms)) return "—";
+  if (ms < 1000) return Math.round(ms) + "ms";
+  if (ms < 60000) return (ms / 1000).toFixed(1) + "s";
+  const m = Math.floor(ms / 60000), s = Math.round((ms % 60000) / 1000);
+  return s ? `${m}m${s}s` : `${m}m`;
+}
+function fmtDur(ms) {
+  if (!Number.isFinite(ms)) return "—";
+  const a = Math.abs(ms) / 1000;
+  if (a < 60) return `${Math.ceil(a)}s`;
+  if (a < 3600) return `${Math.floor(a / 60)}m ${Math.round(a % 60)}s`;
+  return `${Math.floor(a / 3600)}h ${Math.floor((a % 3600) / 60)}m`;
+}
+function fmtClock(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+function pct(n) { return Math.round((Number(n) || 0) * 100); }
+
+/* --------------------------------- api ---------------------------------- */
+async function api(path, opts) {
+  const res = await fetch(path, {
+    headers: { "content-type": "application/json" },
+    ...opts,
+    body: opts && opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const text = await res.text();
+  let data;
+  try { data = text ? JSON.parse(text) : null; } catch { data = { error: text }; }
+  if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+  return data;
+}
+
+/* ------------------------------ renderers ------------------------------- */
+function renderPhases(st) {
+  const cur = st.phase;
+  const idx = PHASES.indexOf(cur);
+  $("phases").innerHTML = PHASES.map((p, i) => {
+    const cls = p === cur ? ("active" + (p === "WAITING" ? " waiting" : ""))
+              : (i < idx ? "done" : "");
+    return `<div class="phase ${cls}" title="${p}">
+              ${p.replace(/_/g, " ")}
+              <span class="zh">${PHASE_ZH[p]}</span>
+            </div>`;
+  }).join("");
+  $("sessionTag").textContent = st.sessionId || "—";
+}
+
+function renderWait(st) {
+  const box = $("waitbox");
+  const waiting = st.phase === "WAITING" && !!st.waitUntil;
+  box.className = "waitbox" + (waiting ? "" : " idle");
+
+  if (!waiting) {
+    $("waitTitle").textContent = st.phase === "WAITING" ? "WAITING (no deadline)" : "NO ACTIVE WAIT";
+    $("waitCount").textContent = "—";
+    $("waitCount").className = "count";
+    $("waitUntilLabel").textContent = "";
+    $("waitBar").style.width = "0%";
+    $("missingList").innerHTML = "";
+    $("waitNote").style.display = "";
+    $("waitNote").textContent = st.phase === "LEARNED"
+      ? "循环已闭合：证据 → 假设 → 干预 → 验证 → 记忆。"
+      : "WAIT 是一个被持久化的状态，不是一个句子。杀掉进程再启动，系统仍会找到它。";
+    return;
+  }
+
+  $("waitNote").style.display = "none";
+  const report = st.sufficiency;
+  const startIso = report && report.evaluatedAt ? report.evaluatedAt : st.enteredAt;
+  const total = Date.parse(st.waitUntil) - Date.parse(startIso);
+  const remaining = Date.parse(st.waitUntil) - Date.now();
+  const overdue = remaining <= 0;
+
+  $("waitTitle").textContent = overdue ? "WAIT ELAPSED — AWAITING WAKE" : "WAITING FOR MORE EVIDENCE";
+  $("waitCount").textContent = overdue ? "00:00:00" : fmtDur(remaining);
+  $("waitCount").className = "count" + (total < 60000 ? " small" : "");
+  $("waitUntilLabel").innerHTML =
+    `wakes at <span class="mono">${fmtClock(st.waitUntil)}</span>` +
+    (total > 0 ? ` · window ${fmtDur(total)}` : "") +
+    ` · cycle ${st.reEvalCount ?? 0}`;
+
+  const p = total > 0 ? Math.min(100, Math.max(0, (1 - remaining / total) * 100)) : 100;
+  $("waitBar").style.width = p + "%";
+
+  const missing = (report && report.missingInformation) || [];
+  const next = report && report.nextObservation;
+  $("missingList").innerHTML =
+    missing.map((m) => `<li>${esc(m)}</li>`).join("") +
+    (next ? `<li>下一步：${esc(next.action)} · ${esc(next.durationMinutes)}min · 目标指标 <span class="mono">${esc((next.targetMetrics||[]).join(", "))}</span></li>` : "");
+}
+
+function renderMetrics(b) {
+  const el = $("metrics");
+  if (!b) { el.innerHTML = `<div class="empty">尚无行为表征 —— 先载入一个会话。</div>`; $("winTag").textContent = ""; return; }
+  const m = b.metrics || {};
+  $("winTag").textContent = `${b.windowMinutes}m · ${(b.segments || []).length} segments`;
+  const keys = ["switchCount","switchRatePerMin","uniqueSources","avgDwellMs","returnRate","longestFocusMs"];
+  el.innerHTML = keys.map((k) => {
+    const [label, unit] = METRIC_LABELS[k] || [k, ""];
+    let v = m[k];
+    if (k === "avgDwellMs" || k === "longestFocusMs") v = fmtMs(v);
+    else if (k === "switchRatePerMin") v = Number(v || 0).toFixed(2);
+    else if (k === "returnRate") v = Number(v || 0).toFixed(2);
+    else v = Number(v || 0).toLocaleString();
+    const hot = (k === "switchCount" || k === "switchRatePerMin");
+    return `<div class="metric">
+              <div class="k">${label}</div>
+              <div class="v" ${hot ? `style="color:${Number(m[k]) >= 15 ? "var(--bad)" : Number(m[k]) >= 8 ? "var(--warn)" : "var(--ok)"}"` : ""}>${v}<span class="u">${unit}</span></div>
+            </div>`;
+  }).join("");
+}
+
+function renderSegments(b) {
+  const bar = $("segbar"), legend = $("legend"), seq = $("seq");
+  if (!b || !(b.segments || []).length) {
+    bar.innerHTML = ""; legend.innerHTML = "";
+    seq.innerHTML = `<span class="dimmer">untitled</span>`;
+    $("segwrap").querySelector(".hint").textContent = "尚无 segment。";
+    return;
+  }
+  $("segwrap").querySelector(".hint").textContent =
+    "Segment map（每个色块 = 一段行为，可追溯到 eventId）";
+
+  const totalMs = b.segments.reduce((s, x) => s + (x.durationMs || 0), 0) || 1;
+  bar.innerHTML = b.segments.map((s) => {
+    const w = Math.max(0.35, (s.durationMs || 0) / totalMs * 100);
+    const c = KIND_COLORS[s.kind] || KIND_COLORS.unknown;
+    return `<div class="seg" style="width:${w}%;background:${c}"
+                 title="${esc(s.kind)} · ${fmtMs(s.durationMs)} · ${esc(s.startTs)} → ${esc(s.endTs)} · ${s.eventIds.length} events"></div>`;
+  }).join("");
+
+  const used = [...new Set(b.segments.map((s) => s.kind))];
+  legend.innerHTML = used.map((k) =>
+    `<span><i style="background:${KIND_COLORS[k] || KIND_COLORS.unknown}"></i>${esc(KIND_ZH[k] || k)}</span>`).join("");
+
+  const run = compressSeq(b.sequence || []);
+  seq.innerHTML = run.map(([k, n]) =>
+    `<span class="chip">${esc(KIND_ZH[k] || k)}${n > 1 ? ` ×${n}` : ""}</span>`).join("");
+}
+
+function compressSeq(seq) {
+  const out = [];
+  for (const k of seq) {
+    const last = out[out.length - 1];
+    if (last && last[0] === k) last[1]++;
+    else out.push([k, 1]);
+  }
+  return out;
+}
+
+function renderTimeline(entries) {
+  const el = $("timeline");
+  if (!entries || !entries.length) { el.innerHTML = `<div class="empty">尚无阶段事件。</div>`; return; }
+  el.innerHTML = entries.slice().reverse().map((e, i) =>
+    `<div class="tlrow ${i === 0 ? "sel" : ""}">
+       <div class="t">${fmtClock(e.at)}</div>
+       <div class="rail"><div class="dot"></div></div>
+       <div class="txt">
+         <div class="ph">${esc(e.label || e.phase)}</div>
+         <div class="dt">${esc(e.detail || "")}</div>
+       </div>
+     </div>`).join("");
+}
+
+function renderSufficiency(report, st) {
+  const el = $("ladder");
+  if (!report) {
+    el.innerHTML = `<div class="empty">尚未评估 —— 至少需要 12 个事件才会第一次评估。</div>`;
+    $("suffTag").textContent = ""; $("suffReason").textContent = "";
+    return;
+  }
+  $("suffTag").textContent = report.status;
+  const conf = pct(report.confidence);
+  const color = report.status === "READY" ? "var(--ok)" : report.status === "WAIT" ? "var(--wait)" : "var(--bad)";
+
+  let sub = "";
+  const chk = Array.isArray(report.checks) ? report.checks : null;
+  if (chk) {
+    sub = chk.map((c) => {
+      const p = pct(c.score);
+      const label = CHECK_LABELS[c.id] || c.id;
+      const colour = p >= 100 ? "var(--ok)" : p >= 50 ? "var(--wait)" : "var(--bad)";
+      return `<div class="rung" title="${esc(c.missing || "")}">
+                <span class="lb" style="${c.ok ? "" : "color:var(--wait)"}">${esc(label)}</span>
+                <span class="pct">${p}%</span>
+                <span class="track"><i style="width:${p}%;background:${colour}"></i></span>
+              </div>`;
+    }).join("");
+  }
+
+  el.innerHTML =
+    `<div class="rung">
+       <span class="lb">整体置信度</span>
+       <span class="pct" style="color:${color}">${conf}%</span>
+       <span class="track"><i style="width:${conf}%;background:${color}"></i></span>
+     </div>
+     <div class="hint" style="margin:5px 0 9px">
+       上限 95% —— “够用”不等于“已证明”。
+     </div>` + sub;
+
+  const bits = [];
+  if (report.reason) bits.push(esc(report.reason));
+  if (report.status === "WAIT" && (report.missingInformation || []).length)
+    bits.push("缺失：" + report.missingInformation.map(esc).join("；"));
+  if (st && st.reEvalCount != null) bits.push(`re-evaluation cycle ${st.reEvalCount}`);
+  $("suffReason").innerHTML = bits.join("<br>");
+}
+
+function evRow(e) {
+  const ids = (e.eventIds || []).slice(0, 4).map((id) =>
+    `<a href="#" data-ev="${esc(id)}">${esc(id)}</a>`).join(" ") +
+    (e.eventIds && e.eventIds.length > 4 ? ` <span class="dimmer">+${e.eventIds.length - 4}</span>` : "");
+  return `<div class="ev">
+            <span>${esc(e.statement)}</span>
+            ${e.metric ? `<span class="m">${esc(e.metric)}=${e.value}</span>` : ""}
+            ${ids ? `<span style="margin-left:auto">${ids}</span>` : ""}
+          </div>`;
+}
+
+function renderHypotheses(set, st) {
+  const el = $("hyps");
+  if (!set || !(set.hypotheses || []).length) {
+    el.innerHTML = `<div class="empty">尚无假设。系统在证据不足时会明确“不猜”——先 WAIT。</div>`;
+    $("hypTag").textContent = "";
+    return;
+  }
+  $("hypTag").textContent = `${set.hypotheses.length} candidates · rev ${set.revision ?? 0}`;
+  el.innerHTML = set.hypotheses.map((h) => {
+    const lead = h.hypothesisId === set.leadingId;
+    const c = pct(h.confidence);
+    return `<div class="hyp ${lead ? "lead" : ""}">
+      <div class="hyphead">
+        <span class="name">${esc(h.statement)}</span>
+        ${lead ? `<span class="badge lead">LEADING</span>` : ""}
+        <span class="badge">${esc(h.state || "")}</span>
+        <span class="conf" style="color:${lead ? "var(--accent)" : "var(--dim)"}">${c}%</span>
+      </div>
+      <div class="cbar"><i style="width:${c}%;background:${lead ? "var(--accent)" : "var(--dim)"}"></i></div>
+      ${h.rationale ? `<div class="hint" style="margin-bottom:9px">${esc(h.rationale)}</div>` : ""}
+      ${(h.supportingEvidence || []).length ? `<div class="evgroup"><div class="t sup">支持证据</div>${h.supportingEvidence.map(evRow).join("")}</div>` : ""}
+      ${(h.contradictingEvidence || []).length ? `<div class="evgroup"><div class="t con">反证（必填字段）</div>${h.contradictingEvidence.map(evRow).join("")}</div>` : `<div class="evgroup"><div class="t con" style="opacity:.55">反证 · 暂无（字段存在，数组可为空）</div></div>`}
+      ${(h.missingEvidence || []).length ? `<div class="evgroup"><div class="t miss">缺失证据</div>${h.missingEvidence.map((m) => `<div class="ev dimmer">· ${esc(m)}</div>`).join("")}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function renderIntervention(iv, ex, phase) {
+  const el = $("interv");
+  const row = $("approveRow");
+  if (!iv) {
+    el.innerHTML = `<div class="empty">尚无干预。系统处于 <span class="mono">${esc(phase)}</span>。</div>`;
+    row.style.display = "none";
+    $("btnPropose").disabled = !(phase === "READY" || phase === "DIAGNOSING");
+    return;
+  }
+  const ap = iv.approval || {};
+  const approved = ap.status === "approved";
+  row.style.display = approved ? "none" : "";
+  $("btnPropose").disabled = true;
+
+  el.innerHTML = `
+    <div class="hyphead">
+      <span class="name">${esc(iv.title)}</span>
+      <span class="badge ${approved ? "lead" : "warn"}">${esc(ap.status || "pending")}</span>
+    </div>
+    <div class="hint" style="margin:8px 0 10px">${esc(iv.description)}</div>
+    <div class="kv" style="margin-bottom:11px">
+      <span class="k">kind</span><span class="mono">${esc(iv.kind)}</span>
+      <span class="k">target metric</span><span class="mono">${esc(iv.targetMetric)}</span>
+      <span class="k">expected effect</span><span>${esc(iv.expectedEffect)}</span>
+      <span class="k">based on</span><span class="mono">${esc(iv.hypothesisId)}</span>
+      ${approved ? `<span class="k">approved by</span><span>${esc(ap.by || "")} · ${esc((ap.at || "").slice(0, 19).replace("T", " "))}</span>` : ""}
+    </div>
+    <div class="evgroup"><div class="t sup">执行步骤（白名单：只渲染清单，绝不执行命令）</div>
+      ${(iv.steps || []).map((s) => `<div class="ev"><span class="m">${esc(s.action)}</span><span>${esc(s.instruction)}</span></div>`).join("")}
+    </div>
+    ${ex ? `<div class="hint" style="margin-top:11px">
+      Experiment <span class="mono">${esc(ex.experimentId)}</span> · metric <span class="mono">${esc(ex.metric)}</span> ·
+      baseline <span class="mono">${ex.baselineValue}</span> · status <span class="mono">${esc(ex.status)}</span>
+    </div>` : ""}
+  `;
+}
+
+function renderVerification(v) {
+  const el = $("verify");
+  if (!v) {
+    el.innerHTML = `<div class="empty">尚无验证结果。判定由算术得出，不由模型选择。</div>`;
+    $("btnVerify").disabled = false;
+    return;
+  }
+  const c = v.comparison;
+  const good = c.deltaPct > 0;
+  el.innerHTML = `
+    <div class="verdict ${esc(v.result)}">
+      <span class="r">${esc(v.result)}</span>
+      <span class="hint" style="margin-left:auto">${esc(v.metric || c.metric)}</span>
+    </div>
+    <div class="compare">
+      <div class="cnumbox">
+        <div class="l">before</div>
+        <div class="n">${c.before}</div>
+        <div class="s">${c.sampleSizeBefore} events · ${c.windowMinutesBefore}m</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="cnumbox">
+        <div class="l">after</div>
+        <div class="n">${c.after}</div>
+        <div class="s">${c.sampleSizeAfter} events · ${c.windowMinutesAfter}m</div>
+      </div>
+    </div>
+    <div class="delta ${good ? "good" : c.deltaPct < 0 ? "bad" : "flat"}">
+      ${c.deltaPct > 0 ? "↓" : c.deltaPct < 0 ? "↑" : "="} ${Math.abs(c.deltaPct)}%
+      <span class="hint" style="margin-left:6px">${good ? "改善" : "未改善"}</span>
+    </div>
+    <div class="hint" style="margin-top:11px">${esc(v.reason || "")}</div>
+    <details style="margin-top:11px">
+      <summary>判定依据 · ${(v.eventIdsBefore || []).length + (v.eventIdsAfter || []).length} eventIds</summary>
+      <pre>before: ${(v.eventIdsBefore || []).slice(0, 24).join(", ") || "—"}
+after:  ${(v.eventIdsAfter || []).slice(0, 24).join(", ") || "—"}</pre>
+    </details>
+  `;
+}
+
+function renderMemory(records) {
+  const el = $("memory");
+  if (!records || !records.length) {
+    el.innerHTML = `<div class="empty">记忆为空。只有 SUPPORTED 的验证才会写入。</div>`;
+    return;
+  }
+  el.innerHTML = `<table class="tbl">
+    <thead><tr><th>lesson</th><th>result</th><th class="num">Δ%</th><th>metric</th></tr></thead>
+    <tbody>${records.map((m) => `<tr>
+      <td>${esc(m.lesson)}</td>
+      <td><span class="mono" style="color:${m.result === "SUPPORTED" ? "var(--ok)" : m.result === "REJECTED" ? "var(--bad)" : "var(--warn)"}">${esc(m.result)}</span></td>
+      <td class="num">${m.deltaPct}</td>
+      <td class="mono dim">${esc(m.metric)}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+/* ------------------------------ orchestrate ----------------------------- */
+function render(snap) {
+  state.snapshot = snap;
+  const v = snap.view;
+  const st = v.state;
+
+  renderPhases(st);
+  renderWait(st);
+  renderMetrics(v.behavior);
+  renderSegments(v.behavior);
+  renderTimeline(snap.timeline);
+  renderSufficiency(v.sufficiency, st);
+  renderHypotheses(v.hypothesisSet, st);
+  renderIntervention(v.intervention, v.experiment, st.phase);
+  renderVerification(v.verification);
+  $("headline").innerHTML = v.task
+    ? `目标 · <b>${esc(v.task.goal)}</b>`
+    : `<span class="dimmer">未声明任务目标（POST /api/sessions/:id/task）</span>`;
+}
+
+async function loadSession(sessionId) {
+  state.sessionId = sessionId;
+  const snap = await api("/api/sessions/" + encodeURIComponent(sessionId));
+  render(snap);
+  await refreshMemory();
+  startTicker();
+}
+
+async function refreshMemory() {
+  try { state.memory = await api("/api/memory"); renderMemory(state.memory); } catch {}
+}
+
+async function refreshSessions(selectId) {
+  try {
+    const list = await api("/api/sessions");
+    const sel = $("sessions");
+    sel.innerHTML = `<option value="">— sessions (${list.length}) —</option>` + list.map((s) =>
+      `<option value="${esc(s.sessionId)}"${s.sessionId === selectId ? " selected" : ""}>${esc(s.sessionId)} · ${esc(s.phase)} · ${s.events}ev</option>`).join("");
+  } catch {}
+}
+
+/* Live countdown for the WAIT box — the visual heart of the demo. */
+function startTicker() {
+  if (state.tick) clearInterval(state.tick);
+  state.tick = setInterval(() => {
+    const st = state.snapshot && state.snapshot.view && state.snapshot.view.state;
+    if (!st || st.phase !== "WAITING" || !st.waitUntil) return;
+    const remaining = Date.parse(st.waitUntil) - Date.now();
+    if (remaining <= 0) {
+      $("waitTitle").textContent = "WAIT ELAPSED — AWAITING WAKE";
+      $("waitCount").textContent = "00:00:00";
+      $("waitBar").style.width = "100%";
+      return;
+    }
+    $("waitCount").textContent = fmtDur(remaining);
+    const report = st.sufficiency;
+    const total = Date.parse(st.waitUntil) - Date.parse(report && report.evaluatedAt ? report.evaluatedAt : st.enteredAt);
+    if (total > 0) $("waitBar").style.width = Math.min(100, Math.max(0, (1 - remaining / total) * 100)) + "%";
+  }, 1000);
+}
+
+/* ------------------------------- actions -------------------------------- */
+async function act(label, fn) {
+  try { await fn(); }
+  catch (err) { toast(`${label} 失败：${err.message}`, true); console.error(err); }
+}
+
+$("btnLoad").onclick = () => act("载入", async () => {
+  const profile = $("profile").value;
+  const r = await api("/api/demo/load", { method: "POST", body: { profile } });
+  toast(`已载入 ${profile} · ${r.loaded} events → ${r.phase}\n${r.headline || ""}`);
+  await refreshSessions(r.sessionId);
+  await loadSession(r.sessionId);
+});
+
+$("btnFast").onclick = () => act("快进", async () => {
+  const r = await api("/api/demo/fast-forward", { method: "POST", body: { sessionId: state.sessionId } });
+  toast(r.message || `已唤醒 ${(r.woken || []).length} 个会话 → ${r.phase}\n${r.headline || ""}`);
+  await refreshSessions(state.sessionId);
+  if (state.sessionId) await loadSession(state.sessionId);
+});
+
+$("btnRefresh").onclick = () => act("刷新", async () => {
+  await refreshSessions(state.sessionId);
+  if (state.sessionId) await loadSession(state.sessionId);
+});
+
+$("btnPropose").onclick = () => act("生成干预", async () => {
+  const r = await api(`/api/sessions/${encodeURIComponent(state.sessionId)}/intervention`, { method: "POST", body: {} });
+  toast(`干预已生成 → ${r.phase}`);
+  await loadSession(state.sessionId);
+});
+
+$("btnApprove").onclick = () => act("批准", async () => {
+  const by = $("acker").value.trim();
+  if (!by) { toast("必须填写批准人姓名 —— 匿名批准会被服务端拒绝。", true); return; }
+  const r = await api(`/api/sessions/${encodeURIComponent(state.sessionId)}/approve`, {
+    method: "POST", body: { acknowledgedBy: by, decision: "approved" }
+  });
+  toast(`${r.message || "已批准"} → ${r.phase}`);
+  await loadSession(state.sessionId);
+});
+
+$("btnReject").onclick = () => act("拒绝", async () => {
+  const by = $("acker").value.trim();
+  if (!by) { toast("必须填写决定人姓名。", true); return; }
+  const r = await api(`/api/sessions/${encodeURIComponent(state.sessionId)}/approve`, {
+    method: "POST", body: { acknowledgedBy: by, decision: "rejected" }
+  });
+  toast(`${r.message || "已拒绝"} → ${r.phase}`);
+  await loadSession(state.sessionId);
+});
+
+$("btnVerify").onclick = () => act("验证", async () => {
+  const r = await api(`/api/sessions/${encodeURIComponent(state.sessionId)}/verify`, { method: "POST", body: {} });
+  toast(`验证完成 → ${r.phase}\n${r.summary || ""}`);
+  await loadSession(state.sessionId);
+});
+
+$("sessions").onchange = (e) => {
+  if (e.target.value) act("切换会话", () => loadSession(e.target.value));
+};
+
+/* Clicking an evidence eventId reveals the raw event it came from. */
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a[data-ev]");
+  if (!a) return;
+  e.preventDefault();
+  const id = a.dataset.ev;
+  const ev = (state.snapshot && state.snapshot.events || []).find((x) => x.eventId === id);
+  toast(ev ? `${id}\n${JSON.stringify({ type: ev.type, url: ev.url, ts: ev.ts })}\n(完整事件在 GET /api/sessions/:id)` : `eventId ${id} 不在当前窗口内`);
+});
+
+/* -------------------------------- boot ---------------------------------- */
+(async function boot() {
+  try {
+    const h = await api("/api/health");
+    await refreshSessions();
+    await refreshMemory();
+    if (h.sessions && h.sessions.length) {
+      // Prefer a session that has already been evaluated (a real phase).
+      const live = h.sessions.find((s) => s.phase && s.phase !== "OBSERVING") || h.sessions[0];
+      await loadSession(live.sessionId);
+      toast(`API online · ${h.sessions.length} session(s) · WAIT ×${h.waitTimeScale}\n${h.dataRoot}`);
+    } else {
+      renderPhases({ sessionId: "—", phase: "OBSERVING" });
+      $("headline").innerHTML = `<span class="dimmer">没有会话。点击「载入会话 Load」开始。</span>`;
+      $("metrics").innerHTML = `<div class="empty">尚无行为表征 —— 先载入一个会话。</div>`;
+      $("timeline").innerHTML = `<div class="empty">尚无阶段事件。</div>`;
+      $("hyps").innerHTML = `<div class="empty">尚无假设。</div>`;
+      $("interv").innerHTML = `<div class="empty">尚无干预。</div>`;
+      $("verify").innerHTML = `<div class="empty">尚无验证结果。</div>`;
+      $("suffTag").textContent = "";
+      $("ladder").innerHTML = `<div class="empty">尚未评估。</div>`;
+    }
+  } catch (err) {
+    toast("无法连接 API：" + err.message, true);
+  }
+})();
+</script>
+</body>
+</html>

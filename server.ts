@@ -33,6 +33,7 @@ import {
 } from "./service.js";
 import { forceExpireWaits } from "./reasoning/state-machine-port.js";
 import { buildSession, BASELINE_PROFILE, IMPROVED_PROFILE, SPARSE_PROFILE, type SessionProfile } from "./collector/src/adapters/synthetic.js";
+import { resolveContainedPath } from "./shared/utils/static-path.js";
 
 bootstrap();
 
@@ -87,10 +88,8 @@ const MIME: Record<string, string> = {
 };
 
 function serveStatic(res: http.ServerResponse, urlPath: string): boolean {
-  const rel = urlPath === "/" ? "/index.html" : urlPath;
-  const full = path.join(FRONTEND, rel);
-  // Path traversal guard: the resolved file must stay inside frontend/.
-  if (!full.startsWith(FRONTEND)) return false;
+  const full = resolveContainedPath(FRONTEND, urlPath);
+  if (!full) return false;
   if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return false;
   const body = fs.readFileSync(full);
   res.writeHead(200, { "content-type": MIME[path.extname(full)] ?? "application/octet-stream" });

@@ -291,6 +291,7 @@ export function resetEverything(): void {
   for (const f of Object.values(FILES)) {
     try {
       if (f.endsWith(".jsonl")) fs.writeFileSync(f, "");
+      else if (f === FILES.timeline) fs.writeFileSync(f, "{}\n");
       else fs.writeFileSync(f, "[]\n");
     } catch {
       /* best effort */
